@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, KeyboardAvoidingView, Modal, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const URL_KEY = 'ios-transfer.pc-url';
@@ -27,6 +28,8 @@ export default function App() {
   const [status, setStatus] = useState('Dán địa chỉ PC receiver rồi chọn file/video để gửi.');
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState({ fileIndex: 0, sent: 0, total: 0 });
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const baseUrl = useMemo(() => normalizeUrl(pcUrl), [pcUrl]);
 
   useEffect(() => {
@@ -36,14 +39,42 @@ export default function App() {
     if (baseUrl) AsyncStorage.setItem(URL_KEY, baseUrl).catch(() => {});
   }, [baseUrl]);
 
+  async function openScanner() {
+    const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+    if (!permission?.granted) {
+      Alert.alert('Chưa có quyền camera', 'Anh cấp quyền camera để app quét QR trên PC. Vẫn có thể nhập URL thủ công.');
+      return;
+    }
+    setScannerOpen(true);
+  }
+  async function handleScanned({ data }) {
+    const value = normalizeUrl(data);
+    if (!/^https?:\/\//i.test(value)) {
+      Alert.alert('QR không hợp lệ', 'QR này không phải địa chỉ web của PC receiver.');
+      return;
+    }
+    setScannerOpen(false);
+    setPcUrl(value);
+    setStatus(`Đã quét URL PC: ${value}. Đang kiểm tra kết nối...`);
+    setTimeout(() => testConnectionWithUrl(value), 50);
+  }
+  async function testConnectionWithUrl(url) {
+    try {
+      const res = await fetch(`${url}/api/info`);
+      const data = await res.json();
+      if (!data.ok) throw new Error('PC receiver trả về lỗi');
+      setStatus(`Kết nối OK. File sẽ lưu ở PC: ${data.uploadDir || 'thư mục receiver'}`);
+    } catch (err) {
+      setStatus(`Không kết nối được: ${err.message}`);
+      Alert.alert('Không kết nối được PC', 'Kiểm tra PC và iPhone cùng Wi‑Fi, app PC đang mở, và Windows Firewall đã allow.');
+    }
+  }
+
   async function testConnection() {
     if (!baseUrl) return Alert.alert('Thiếu địa chỉ PC', 'Ví dụ: http://192.168.100.2:8799');
     try {
       setStatus('Đang kiểm tra kết nối tới PC...');
-      const res = await fetch(`${baseUrl}/api/info`);
-      const data = await res.json();
-      if (!data.ok) throw new Error('PC receiver trả về lỗi');
-      setStatus(`Kết nối OK. File sẽ lưu ở PC: ${data.uploadDir || 'thư mục receiver'}`);
+      await testConnectionWithUrl(baseUrl);
     } catch (err) {
       setStatus(`Không kết nối được: ${err.message}`);
       Alert.alert('Không kết nối được PC', 'Kiểm tra PC và iPhone cùng Wi‑Fi, app PC đang mở, và Windows Firewall đã allow.');
@@ -152,7 +183,10 @@ export default function App() {
             autoCorrect={false}
             style={styles.input}
           />
-          <TouchableOpacity disabled={busy} onPress={testConnection} style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Kiểm tra kết nối</Text></TouchableOpacity>
+          <View style={styles.row}>
+            <TouchableOpacity disabled={busy} onPress={openScanner} style={[styles.button, styles.halfButton]}><Text style={styles.buttonText}>Scan QR PC</Text></TouchableOpacity>
+            <TouchableOpacity disabled={busy} onPress={testConnection} style={[styles.button, styles.secondary, styles.halfButton]}><Text style={styles.buttonText}>Kiểm tra</Text></TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.card}>
@@ -162,6 +196,20 @@ export default function App() {
           {progress.total > 0 ? <View style={styles.progress}><View style={[styles.bar, { width: `${pct}%` }]} /><Text style={styles.percent}>{pct}%</Text></View> : null}
           {files.length ? <Text style={styles.meta}>Đã chọn {files.length} file · {fmt(totalSelected)}</Text> : null}
         </View>
+
+
+        <Modal visible={scannerOpen} animationType="slide" onRequestClose={() => setScannerOpen(false)}>
+          <SafeAreaView style={styles.scannerPage}>
+            <Text style={styles.scannerTitle}>Quét QR trên app PC</Text>
+            <Text style={styles.scannerHint}>Đưa camera vào QR đang hiện trong iPhone File Transfer trên PC.</Text>
+            <CameraView
+              style={styles.camera}
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={handleScanned}
+            />
+            <TouchableOpacity onPress={() => setScannerOpen(false)} style={[styles.button, styles.secondary]}><Text style={styles.buttonText}>Đóng scanner</Text></TouchableOpacity>
+          </SafeAreaView>
+        </Modal>
 
         <FlatList
           data={files}
@@ -183,7 +231,9 @@ const styles = StyleSheet.create({
   card: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(148,163,184,0.22)', borderWidth: 1, borderRadius: 24, padding: 16, gap: 10 },
   label: { color: '#dbeafe', fontWeight: '800' },
   input: { backgroundColor: '#0e1d31', color: '#fff', borderColor: '#24415f', borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15 },
+  row: { flexDirection: 'row', gap: 10 },
   button: { backgroundColor: '#22c55e', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  halfButton: { flex: 1 },
   secondary: { backgroundColor: '#1f334b' },
   disabled: { opacity: 0.45 },
   buttonText: { color: '#03111f', fontWeight: '950', fontSize: 16 },
@@ -195,4 +245,8 @@ const styles = StyleSheet.create({
   file: { backgroundColor: '#0e1d31', borderColor: 'rgba(148,163,184,0.18)', borderWidth: 1, borderRadius: 16, padding: 13, marginBottom: 8 },
   fileName: { color: '#fff', fontWeight: '800' },
   fileSize: { color: '#94a3b8', marginTop: 4 },
+  scannerPage: { flex: 1, backgroundColor: '#07111f', padding: 18, gap: 14 },
+  scannerTitle: { color: '#fff', fontSize: 26, fontWeight: '900' },
+  scannerHint: { color: '#b6c6dc', lineHeight: 20 },
+  camera: { flex: 1, borderRadius: 24, overflow: 'hidden' },
 });
