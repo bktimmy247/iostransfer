@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
@@ -63,35 +63,79 @@ drop.addEventListener('click',(e)=>{ if(e.target===drop || e.target.tagName==='H
 picker.addEventListener('change',e=>{ files=validFiles(e.target.files); renderSelected(); if(!files.length) show('Chưa chọn được file. Anh thử chọn từ Photos hoặc Files lại nhé.'); });
 drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag')}); drop.addEventListener('dragleave',()=>drop.classList.remove('drag')); drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag'); files=validFiles(e.dataTransfer.files); renderSelected();});
 
-function uploadOne(file, index, totalCount){
-  return new Promise((resolve) => {
-    const fd=new FormData();
-    fd.append('file', file);
+
+const CHUNK_SIZE = 6 * 1024 * 1024; // 6MB: ổn hơn cho iPhone/Safari khi gửi video dài
+const SMALL_FILE_LIMIT = 24 * 1024 * 1024;
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function postJson(url, body){
+  return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(async r=>{
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok || data.ok===false) throw new Error(data.error || ('HTTP '+r.status));
+    return data;
+  });
+}
+function sendForm(url, form, onProgress){
+  return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();
-    xhr.open('POST','/api/upload-one');
-    xhr.timeout = 0;
-    xhr.upload.onprogress=e=>{
-      if(e.lengthComputable){
-        const pct=Math.round(e.loaded/e.total*100);
-        bar.style.width=pct+'%';
-        percent.textContent=pct+'%';
-        setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name} — ${pct}% (${fmt(e.loaded)} / ${fmt(e.total)})`, '');
-      } else {
-        setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name}...`, '');
-      }
-    };
+    xhr.open('POST',url);
+    xhr.timeout=0;
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable && onProgress) onProgress(e.loaded,e.total); };
     xhr.onload=()=>{
       if(xhr.status>=200&&xhr.status<300){
-        try { resolve({ok:true, data: JSON.parse(xhr.responseText||'{}')}); }
-        catch { resolve({ok:true, data:{}}); }
-      } else {
-        resolve({ok:false, error:xhr.responseText || ('HTTP '+xhr.status)});
-      }
+        try{ resolve(JSON.parse(xhr.responseText||'{}')); } catch{ resolve({ok:true}); }
+      } else reject(new Error(xhr.responseText || ('HTTP '+xhr.status)));
     };
-    xhr.onerror=()=>resolve({ok:false, error:'Mất kết nối khi upload'});
-    xhr.onabort=()=>resolve({ok:false, error:'Upload bị hủy'});
-    xhr.send(fd);
+    xhr.onerror=()=>reject(new Error('Mất kết nối khi upload'));
+    xhr.onabort=()=>reject(new Error('Upload bị hủy'));
+    xhr.send(form);
   });
+}
+async function retry(fn, label, max=3){
+  let last;
+  for(let attempt=1;attempt<=max;attempt++){
+    try{return await fn(attempt);}
+    catch(err){last=err; if(attempt<max){ setStatus(`${label} lỗi lần ${attempt}, thử lại...`, 'bad'); await sleep(700*attempt); }}
+  }
+  throw last;
+}
+async function uploadSmallFile(file, index, totalCount){
+  const fd=new FormData();
+  fd.append('file', file);
+  return retry(()=>sendForm('/api/upload-one', fd, (loaded,total)=>{
+    const pct=Math.round(loaded/total*100);
+    bar.style.width=pct+'%'; percent.textContent=pct+'%';
+    setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name} — ${pct}% (${fmt(loaded)} / ${fmt(total)})`, '');
+  }), `File ${file.name}`);
+}
+async function uploadChunkedFile(file, index, totalCount){
+  const totalChunks=Math.ceil(file.size/CHUNK_SIZE);
+  const init=await postJson('/api/chunk/init',{name:file.name,size:file.size,type:file.type,totalChunks,chunkSize:CHUNK_SIZE});
+  let uploadedBytes=0;
+  setStatus(`Video/file lớn: ${file.name}. Đang gửi ${totalChunks} mảnh nhỏ để PC ghép lại...`, '');
+  for(let chunkIndex=0;chunkIndex<totalChunks;chunkIndex++){
+    const start=chunkIndex*CHUNK_SIZE;
+    const end=Math.min(file.size,start+CHUNK_SIZE);
+    const blob=file.slice(start,end);
+    await retry(()=>{
+      const fd=new FormData();
+      fd.append('uploadId', init.uploadId);
+      fd.append('index', String(chunkIndex));
+      fd.append('chunk', blob, `${file.name}.part${chunkIndex}`);
+      return sendForm('/api/chunk', fd, (loaded,total)=>{
+        const current=uploadedBytes+loaded;
+        const pct=Math.round(current/file.size*100);
+        bar.style.width=pct+'%'; percent.textContent=pct+'%';
+        setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name} — mảnh ${chunkIndex+1}/${totalChunks} · ${pct}% (${fmt(current)} / ${fmt(file.size)})`, '');
+      });
+    }, `Mảnh ${chunkIndex+1}/${totalChunks}`);
+    uploadedBytes += blob.size;
+  }
+  setStatus(`Đã gửi đủ ${totalChunks} mảnh của ${file.name}. PC đang ghép file...`, '');
+  return await postJson('/api/chunk/complete',{uploadId:init.uploadId});
+}
+async function uploadFileSmart(file, index, totalCount){
+  if(file.size <= SMALL_FILE_LIMIT) return await uploadSmallFile(file,index,totalCount);
+  return await uploadChunkedFile(file,index,totalCount);
 }
 
 uploadBtn.addEventListener('click',async()=>{
@@ -104,28 +148,24 @@ uploadBtn.addEventListener('click',async()=>{
   progress.style.display='block';
   uploadBtn.disabled=true;
   chooseBtn.disabled=true;
-  setStatus(`Bắt đầu upload ${queue.length} file (${fmt(totalBytes)}). App sẽ gửi từng file một để ổn định hơn trên iPhone.`, '');
+  setStatus(`Bắt đầu upload ${queue.length} file (${fmt(totalBytes)}). File lớn sẽ được chia mảnh để ổn định hơn.`, '');
   for(let i=0;i<queue.length;i++){
     const file=queue[i];
-    bar.style.width='0%';
-    percent.textContent='0%';
-    const result=await uploadOne(file,i,queue.length);
-    if(result.ok){
+    bar.style.width='0%'; percent.textContent='0%';
+    try{
+      await uploadFileSmart(file,i,queue.length);
       okCount++;
       sentBytes+=file.size;
+      bar.style.width='100%'; percent.textContent='100%';
       setStatus(`Đã gửi xong ${okCount}/${queue.length} file · tổng đã gửi ${fmt(sentBytes)} / ${fmt(totalBytes)}`, 'good');
       await loadFiles();
-    } else {
-      failed.push({file:file.name,error:result.error});
-      setStatus(`Lỗi ở file ${file.name}: ${result.error}. App sẽ thử file tiếp theo.`, 'bad');
+    }catch(err){
+      failed.push({file:file.name,error:err.message});
+      setStatus(`Lỗi ở file ${file.name}: ${err.message}. App sẽ thử file tiếp theo.`, 'bad');
     }
   }
   chooseBtn.disabled=false;
-  files=[];
-  picker.value='';
-  renderSelected();
-  bar.style.width='100%';
-  percent.textContent='100%';
+  files=[]; picker.value=''; renderSelected();
   await loadFiles();
   if(failed.length){
     setStatus(`Upload xong ${okCount}/${queue.length} file. ${failed.length} file lỗi: ${failed.map(f=>f.file).join(', ')}`, 'bad');
