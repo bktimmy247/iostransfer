@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "iOS Transfer Sender",
+    "slug": "ios-transfer-sender",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aicoworker.iostransfersender",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Chọn ảnh/video để gửi về PC của bạn.",
+        "NSDocumentsFolderUsageDescription": "Chọn file để gửi về PC của bạn."
+      }
+    },
+    "android": {
+      "package": "com.aicoworker.iostransfersender"
+    }
+  }
+}

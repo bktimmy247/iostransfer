@@ -5,6 +5,12 @@ uploads/*
 *.log
 .DS_Store
 
+# Expo / React Native
+mobile-sender/node_modules/
+mobile-sender/.expo/
+mobile-sender/dist/
+mobile-sender/.expo-shared/
+
 # Electron build cache/output
 /dist-electron/
 /dist-electron-fixed/
