@@ -175,6 +175,29 @@ export async function createApp({ port = DEFAULT_PORT, rootDir = moduleDir, uplo
     }
   });
 
+  app.post('/api/upload-raw', async (req, res, next) => {
+    try {
+      const originalName = decodeURIComponent(String(req.headers['x-file-name'] || 'file.bin'));
+      const finalName = safeName(originalName);
+      const finalPath = path.join(uploadDir, finalName);
+      let size = 0;
+      console.log(`[upload-raw] incoming ${originalName} from ${req.ip} at ${new Date().toISOString()}`);
+      await new Promise((resolve, reject) => {
+        const out = fs.createWriteStream(finalPath, { flags: 'w' });
+        req.on('data', chunk => { size += chunk.length; if (size > MAX_UPLOAD_SIZE) { req.destroy(new Error('File quá lớn')); } });
+        req.on('error', reject);
+        out.on('error', reject);
+        out.on('finish', resolve);
+        req.pipe(out);
+      });
+      const file = { name: finalName, originalName, size, url: `/uploads/${encodeURIComponent(finalName)}` };
+      console.log(`[upload-raw] saved ${file.name} (${file.size} bytes)`);
+      res.json({ ok: true, file });
+    } catch (err) {
+      next(err);
+    }
+  });
+
   app.post('/api/upload-one', (req, _res, next) => {
     console.log(`[upload-one] incoming from ${req.ip} at ${new Date().toISOString()}`);
     next();

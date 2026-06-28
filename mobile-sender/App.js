@@ -104,17 +104,18 @@ export default function App() {
   }
 
   async function uploadFile(file, index, totalCount) {
-    const endpoint = `${baseUrl}/api/upload-one`;
+    const endpoint = `${baseUrl}/api/upload-raw`;
     return new Promise((resolve, reject) => {
       const task = FileSystem.createUploadTask(
         endpoint,
         file.uri,
         {
           httpMethod: 'POST',
-          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
-          fieldName: 'file',
-          mimeType: file.mimeType || 'application/octet-stream',
-          parameters: { source: 'expo-sender', originalName: file.name },
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: {
+            'Content-Type': file.mimeType || 'application/octet-stream',
+            'X-File-Name': encodeURIComponent(file.name || 'file.bin'),
+          },
         },
         ({ totalBytesSent, totalBytesExpectedToSend }) => {
           const total = totalBytesExpectedToSend || file.size || 0;

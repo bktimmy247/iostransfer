@@ -16,3 +16,5 @@ mobile-sender/.expo-shared/
 /dist-electron-fixed/
 /dist-electron-file-transfer/*
 !/dist-electron-file-transfer/iPhoneFileTransfer-Portable.exe
+/dist-electron-raw-upload/*
+!/dist-electron-raw-upload/iPhoneFileTransfer-RawUpload-Portable.exe
