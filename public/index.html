@@ -1,0 +1,71 @@
+﻿<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>iPhone File Transfer</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:#07111f;color:#e5efff;min-height:100vh}.page{max-width:1080px;margin:auto;padding:22px}.hero{display:grid;grid-template-columns:1.2fr .8fr;gap:22px;align-items:stretch}.card{background:rgba(255,255,255,.07);border:1px solid rgba(148,163,184,.22);border-radius:28px;padding:22px;box-shadow:0 22px 80px rgba(0,0,0,.22);backdrop-filter:blur(16px)}.badge{display:inline-flex;background:#dcfce7;color:#166534;border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900}.title{font-size:44px;line-height:1.02;margin:16px 0 12px;letter-spacing:-1.6px}.sub{font-size:17px;color:#b6c6dc;line-height:1.55}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:22px}.step{background:#0f2137;border:1px solid rgba(148,163,184,.2);border-radius:20px;padding:15px}.step b{display:block;color:#fff;margin-bottom:6px}.qrbox{text-align:center}.qrbox img{background:#fff;border-radius:24px;padding:12px;width:260px;max-width:100%}.url{word-break:break-all;background:#081322;border:1px dashed #38bdf8;border-radius:16px;padding:12px;color:#bfdbfe;margin-top:14px}.upload{margin-top:22px}.drop{border:2px dashed rgba(56,189,248,.6);border-radius:30px;padding:30px;text-align:center;background:linear-gradient(135deg,rgba(14,165,233,.08),rgba(34,197,94,.08));cursor:pointer}.drop.drag{background:rgba(14,165,233,.18)}.drop h2{margin:0 0 8px;font-size:28px}.drop p{color:#b6c6dc}.drop input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}.btn{border:0;border-radius:18px;background:linear-gradient(135deg,#22c55e,#38bdf8);color:#03111f;font-weight:950;padding:14px 20px;font-size:16px;cursor:pointer;margin:4px}.btn.secondary{background:#1f334b;color:#dbeafe}.btn:disabled{opacity:.38;filter:grayscale(1);cursor:not-allowed}.status{margin:14px 0;padding:13px 15px;border-radius:16px;background:#0e1d31;border:1px solid rgba(148,163,184,.18);color:#dbeafe;line-height:1.45}.status.good{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);color:#bbf7d0}.status.bad{background:rgba(239,68,68,.13);border-color:rgba(239,68,68,.45);color:#fecaca}.progress{height:18px;border-radius:999px;background:#12263e;overflow:hidden;margin:18px 0;display:none;position:relative}.bar{height:100%;width:0;background:linear-gradient(90deg,#22c55e,#38bdf8);transition:width .2s}.percent{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:900;color:white;text-shadow:0 1px 2px #000}.selected{display:grid;gap:8px;margin:12px 0}.file{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:#0e1d31;border:1px solid rgba(148,163,184,.18);border-radius:16px}.file span{overflow:hidden;text-overflow:ellipsis}.files{margin-top:22px}.files h2{margin:0 0 14px}.list{display:grid;gap:10px}.saved{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:#fff;color:#0f172a;border-radius:18px;padding:14px}.saved small{display:block;color:#64748b;margin-top:4px}.saved a{color:#0ea5e9;font-weight:900;text-decoration:none}.muted{color:#94a3b8}.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;color:#0f172a;border-radius:18px;padding:14px 18px;box-shadow:0 18px 60px rgba(0,0,0,.28);display:none;z-index:30;max-width:90vw}@media(max-width:800px){.page{padding:14px}.hero{grid-template-columns:1fr}.title{font-size:34px}.steps{grid-template-columns:1fr}.drop{padding:24px}.saved{grid-template-columns:1fr}.card{border-radius:22px}.btn{width:100%;margin:6px 0}.file{display:block}.file b{display:block;margin-top:5px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="card">
+        <span class="badge">CÙNG WI‑FI · KHÔNG CLOUD</span>
+        <h1 class="title">Chuyển file từ iPhone/iPad sang PC</h1>
+        <p class="sub">Mở link này trên iPhone/iPad cùng mạng Wi‑Fi, chọn file, ảnh, video, tài liệu trong Photos/Files, upload thẳng vào thư mục trên PC.</p>
+        <div class="steps"><div class="step"><b>1. PC bật app</b><span>Server chạy trong Windows.</span></div><div class="step"><b>2. iPhone scan QR</b><span>Mở Safari cùng Wi‑Fi.</span></div><div class="step"><b>3. Chọn file</b><span>File lưu vào PC ngay.</span></div></div>
+      </div>
+      <div class="card qrbox">
+        <h2>Scan bằng iPhone/iPad</h2>
+        <img id="qr" alt="QR truy cập app" />
+        <div id="url" class="url">Đang lấy địa chỉ LAN...</div>
+        <p class="muted">Nếu không vào được, kiểm tra PC và iPhone cùng Wi‑Fi, hoặc Allow firewall cho Node.js.</p>
+      </div>
+    </section>
+
+    <section class="card upload">
+      <div id="drop" class="drop">
+        <input id="picker" type="file" multiple />
+        <h2>Chọn file để chuyển</h2>
+        <p>Bấm nút dưới đây rồi chọn file, ảnh, video, tài liệu trong Photos/Files. Chọn xong sẽ hiện danh sách ngay.</p>
+        <button id="choose" type="button" class="btn">1. Chọn file</button>
+      </div>
+      <div id="status" class="status">Chưa chọn file nào.</div>
+      <div id="selected" class="selected"></div>
+      <div id="progress" class="progress"><div id="bar" class="bar"></div><div id="percent" class="percent">0%</div></div>
+      <button id="upload" class="btn" disabled>2. Upload về PC</button>
+      <button id="refresh" class="btn secondary" type="button">Làm mới danh sách</button>
+    </section>
+
+    <section class="card files">
+      <h2>File đã nhận trên PC</h2>
+      <div id="files" class="list"><p class="muted">Chưa có file.</p></div>
+    </section>
+  </main>
+  <div id="toast" class="toast"></div>
+<script>
+const picker=document.getElementById('picker'), chooseBtn=document.getElementById('choose'), drop=document.getElementById('drop'), selected=document.getElementById('selected'), uploadBtn=document.getElementById('upload'), filesEl=document.getElementById('files'), bar=document.getElementById('bar'), percent=document.getElementById('percent'), progress=document.getElementById('progress'), toast=document.getElementById('toast'), statusBox=document.getElementById('status');
+let files=[]; const fmt=n=>{ if(n>1024**3) return (n/1024**3).toFixed(2)+' GB'; if(n>1024**2) return (n/1024**2).toFixed(1)+' MB'; return (n/1024).toFixed(1)+' KB'; };
+function show(msg){toast.textContent=msg;toast.style.display='block';setTimeout(()=>toast.style.display='none',3500)}
+function setStatus(msg,type=''){statusBox.className='status '+type;statusBox.textContent=msg;}
+async function init(){const info=await fetch('/api/info').then(r=>r.json()); const url=info.primaryUrl || location.origin; document.getElementById('url').textContent=url; document.getElementById('qr').src='/api/qr.svg?ip='+encodeURIComponent(new URL(url).hostname); await loadFiles();}
+function validFiles(list){return [...list];}
+function renderSelected(){
+  selected.innerHTML=files.map(f=>`<div class="file"><span>${f.name}</span><b>${fmt(f.size)}</b></div>`).join('');
+  uploadBtn.disabled=!files.length;
+  if(files.length){ const total=files.reduce((s,f)=>s+f.size,0); setStatus(`Đã chọn ${files.length} file · tổng ${fmt(total)}. Bấm “Upload về PC” để chuyển.`, 'good'); }
+  else setStatus('Chưa chọn file nào. Bấm “Chọn file” trước.', '');
+}
+chooseBtn.addEventListener('click',()=>picker.click());
+drop.addEventListener('click',(e)=>{ if(e.target===drop || e.target.tagName==='H2' || e.target.tagName==='P') picker.click(); });
+picker.addEventListener('change',e=>{ files=validFiles(e.target.files); renderSelected(); if(!files.length) show('Chưa chọn được file. Anh thử chọn từ Photos hoặc Files lại nhé.'); });
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag')}); drop.addEventListener('dragleave',()=>drop.classList.remove('drag')); drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag'); files=validFiles(e.dataTransfer.files); renderSelected();});
+uploadBtn.addEventListener('click',()=>{ if(!files.length){show('Chưa có file để upload');return;} const fd=new FormData(); files.forEach(f=>fd.append('files',f)); const xhr=new XMLHttpRequest(); xhr.open('POST','/api/upload'); progress.style.display='block'; bar.style.width='0%'; percent.textContent='0%'; uploadBtn.disabled=true; chooseBtn.disabled=true; setStatus('Đang upload... giữ màn hình iPhone sáng, không thoát Safari.', ''); xhr.upload.onprogress=e=>{ if(e.lengthComputable){ const pct=Math.round(e.loaded/e.total*100); bar.style.width=pct+'%'; percent.textContent=pct+'%'; setStatus(`Đang upload ${pct}% (${fmt(e.loaded)} / ${fmt(e.total)})`, ''); } else { setStatus('Đang upload... chưa đo được phần trăm.', ''); } }; xhr.onload=async()=>{ chooseBtn.disabled=false; if(xhr.status>=200&&xhr.status<300){ bar.style.width='100%'; percent.textContent='100%'; const result=JSON.parse(xhr.responseText||'{}'); files=[]; picker.value=''; renderSelected(); setStatus(`Upload xong ${result.files?.length||0} file. File đã nằm trên PC.`, 'good'); show('Upload xong, file đã nằm trên PC'); await loadFiles(); } else { uploadBtn.disabled=false; setStatus('Upload lỗi: '+xhr.responseText, 'bad'); show('Upload lỗi, xem dòng trạng thái màu đỏ'); } }; xhr.onerror=()=>{ chooseBtn.disabled=false; uploadBtn.disabled=false; setStatus('Mất kết nối khi upload. Kiểm tra Wi‑Fi/firewall rồi thử lại.', 'bad'); show('Mất kết nối khi upload'); }; xhr.send(fd); });
+document.getElementById('refresh').addEventListener('click',loadFiles);
+async function loadFiles(){try{const data=await fetch('/api/files').then(r=>r.json()); if(!data.files.length){filesEl.innerHTML='<p class="muted">Chưa có file nào.</p>'; return;} filesEl.innerHTML=data.files.map(f=>`<div class="saved"><div><b>${f.name}</b><small>${fmt(f.size)} · ${new Date(f.createdAt).toLocaleString('vi-VN')}</small></div><a href="${f.url}" download>Tải/mở</a></div>`).join('');}catch(err){filesEl.innerHTML='<p class="muted">Không tải được danh sách file.</p>';}}
+init().catch(err=>setStatus(err.message,'bad'));
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "name": "iphone-file-transfer",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "electron": "electron .",
+    "pack": "electron-builder --win portable"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.aicoworker.iphone-file-transfer",
+    "productName": "iPhone File Transfer",
+    "directories": {
+      "output": "dist-electron-file-transfer"
+    },
+    "files": [
+      "electron/**/*",
+      "server.js",
+      "public/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": ["portable"],
+      "artifactName": "iPhoneFileTransfer-Portable.exe"
+    }
+  }
+}

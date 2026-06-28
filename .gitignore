@@ -1,0 +1,12 @@
+node_modules/
+uploads/*
+!uploads/.gitkeep
+.env
+*.log
+.DS_Store
+
+# Electron build cache/output
+/dist-electron/
+/dist-electron-fixed/
+/dist-electron-file-transfer/*
+!/dist-electron-file-transfer/iPhoneFileTransfer-Portable.exe
