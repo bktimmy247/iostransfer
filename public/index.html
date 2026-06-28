@@ -62,7 +62,79 @@ chooseBtn.addEventListener('click',()=>picker.click());
 drop.addEventListener('click',(e)=>{ if(e.target===drop || e.target.tagName==='H2' || e.target.tagName==='P') picker.click(); });
 picker.addEventListener('change',e=>{ files=validFiles(e.target.files); renderSelected(); if(!files.length) show('Chưa chọn được file. Anh thử chọn từ Photos hoặc Files lại nhé.'); });
 drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('drag')}); drop.addEventListener('dragleave',()=>drop.classList.remove('drag')); drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('drag'); files=validFiles(e.dataTransfer.files); renderSelected();});
-uploadBtn.addEventListener('click',()=>{ if(!files.length){show('Chưa có file để upload');return;} const fd=new FormData(); files.forEach(f=>fd.append('files',f)); const xhr=new XMLHttpRequest(); xhr.open('POST','/api/upload'); progress.style.display='block'; bar.style.width='0%'; percent.textContent='0%'; uploadBtn.disabled=true; chooseBtn.disabled=true; setStatus('Đang upload... giữ màn hình iPhone sáng, không thoát Safari.', ''); xhr.upload.onprogress=e=>{ if(e.lengthComputable){ const pct=Math.round(e.loaded/e.total*100); bar.style.width=pct+'%'; percent.textContent=pct+'%'; setStatus(`Đang upload ${pct}% (${fmt(e.loaded)} / ${fmt(e.total)})`, ''); } else { setStatus('Đang upload... chưa đo được phần trăm.', ''); } }; xhr.onload=async()=>{ chooseBtn.disabled=false; if(xhr.status>=200&&xhr.status<300){ bar.style.width='100%'; percent.textContent='100%'; const result=JSON.parse(xhr.responseText||'{}'); files=[]; picker.value=''; renderSelected(); setStatus(`Upload xong ${result.files?.length||0} file. File đã nằm trên PC.`, 'good'); show('Upload xong, file đã nằm trên PC'); await loadFiles(); } else { uploadBtn.disabled=false; setStatus('Upload lỗi: '+xhr.responseText, 'bad'); show('Upload lỗi, xem dòng trạng thái màu đỏ'); } }; xhr.onerror=()=>{ chooseBtn.disabled=false; uploadBtn.disabled=false; setStatus('Mất kết nối khi upload. Kiểm tra Wi‑Fi/firewall rồi thử lại.', 'bad'); show('Mất kết nối khi upload'); }; xhr.send(fd); });
+
+function uploadOne(file, index, totalCount){
+  return new Promise((resolve) => {
+    const fd=new FormData();
+    fd.append('file', file);
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST','/api/upload-one');
+    xhr.timeout = 0;
+    xhr.upload.onprogress=e=>{
+      if(e.lengthComputable){
+        const pct=Math.round(e.loaded/e.total*100);
+        bar.style.width=pct+'%';
+        percent.textContent=pct+'%';
+        setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name} — ${pct}% (${fmt(e.loaded)} / ${fmt(e.total)})`, '');
+      } else {
+        setStatus(`Đang gửi file ${index+1}/${totalCount}: ${file.name}...`, '');
+      }
+    };
+    xhr.onload=()=>{
+      if(xhr.status>=200&&xhr.status<300){
+        try { resolve({ok:true, data: JSON.parse(xhr.responseText||'{}')}); }
+        catch { resolve({ok:true, data:{}}); }
+      } else {
+        resolve({ok:false, error:xhr.responseText || ('HTTP '+xhr.status)});
+      }
+    };
+    xhr.onerror=()=>resolve({ok:false, error:'Mất kết nối khi upload'});
+    xhr.onabort=()=>resolve({ok:false, error:'Upload bị hủy'});
+    xhr.send(fd);
+  });
+}
+
+uploadBtn.addEventListener('click',async()=>{
+  if(!files.length){show('Chưa có file để upload');return;}
+  const queue=[...files];
+  const totalBytes=queue.reduce((s,f)=>s+f.size,0);
+  let sentBytes=0;
+  let okCount=0;
+  const failed=[];
+  progress.style.display='block';
+  uploadBtn.disabled=true;
+  chooseBtn.disabled=true;
+  setStatus(`Bắt đầu upload ${queue.length} file (${fmt(totalBytes)}). App sẽ gửi từng file một để ổn định hơn trên iPhone.`, '');
+  for(let i=0;i<queue.length;i++){
+    const file=queue[i];
+    bar.style.width='0%';
+    percent.textContent='0%';
+    const result=await uploadOne(file,i,queue.length);
+    if(result.ok){
+      okCount++;
+      sentBytes+=file.size;
+      setStatus(`Đã gửi xong ${okCount}/${queue.length} file · tổng đã gửi ${fmt(sentBytes)} / ${fmt(totalBytes)}`, 'good');
+      await loadFiles();
+    } else {
+      failed.push({file:file.name,error:result.error});
+      setStatus(`Lỗi ở file ${file.name}: ${result.error}. App sẽ thử file tiếp theo.`, 'bad');
+    }
+  }
+  chooseBtn.disabled=false;
+  files=[];
+  picker.value='';
+  renderSelected();
+  bar.style.width='100%';
+  percent.textContent='100%';
+  await loadFiles();
+  if(failed.length){
+    setStatus(`Upload xong ${okCount}/${queue.length} file. ${failed.length} file lỗi: ${failed.map(f=>f.file).join(', ')}`, 'bad');
+    show(`Upload xong ${okCount}/${queue.length} file, có file lỗi`);
+  } else {
+    setStatus(`Upload xong toàn bộ ${okCount} file. File đã nằm trên PC.`, 'good');
+    show('Upload xong toàn bộ file');
+  }
+});
 document.getElementById('refresh').addEventListener('click',loadFiles);
 async function loadFiles(){try{const data=await fetch('/api/files').then(r=>r.json()); if(!data.files.length){filesEl.innerHTML='<p class="muted">Chưa có file nào.</p>'; return;} filesEl.innerHTML=data.files.map(f=>`<div class="saved"><div><b>${f.name}</b><small>${fmt(f.size)} · ${new Date(f.createdAt).toLocaleString('vi-VN')}</small></div><a href="${f.url}" download>Tải/mở</a></div>`).join('');}catch(err){filesEl.innerHTML='<p class="muted">Không tải được danh sách file.</p>';}}
 init().catch(err=>setStatus(err.message,'bad'));

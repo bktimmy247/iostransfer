@@ -81,6 +81,16 @@ export async function createApp({ port = DEFAULT_PORT, rootDir = moduleDir, uplo
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     res.json({ ok: true, files });
   });
+  app.post('/api/upload-one', (req, _res, next) => {
+    console.log(`[upload-one] incoming from ${req.ip} at ${new Date().toISOString()}`);
+    next();
+  }, upload.single('file'), (req, res) => {
+    if (!req.file) return res.status(400).json({ ok: false, error: 'Không có file được gửi lên' });
+    const file = { name: req.file.filename, originalName: req.file.originalname, size: req.file.size, url: `/uploads/${encodeURIComponent(req.file.filename)}` };
+    console.log(`[upload-one] saved ${file.name} (${file.size} bytes)`);
+    res.json({ ok: true, file });
+  });
+
   app.post('/api/upload', (req, _res, next) => {
     console.log(`[upload] incoming from ${req.ip} at ${new Date().toISOString()}`);
     next();
