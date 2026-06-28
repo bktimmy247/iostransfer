@@ -18,6 +18,18 @@
     },
     "android": {
       "package": "com.aicoworker.iostransfersender"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8ec897f1-c9bc-4ab0-899c-8b50aa04bb18"
+      }
+    },
+    "owner": "metuannhiai",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8ec897f1-c9bc-4ab0-899c-8b50aa04bb18"
     }
   }
 }
