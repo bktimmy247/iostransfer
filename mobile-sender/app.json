@@ -2,7 +2,7 @@
   "expo": {
     "name": "iOS Transfer Sender",
     "slug": "ios-transfer-sender",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": [
@@ -25,11 +25,10 @@
       }
     },
     "owner": "metuannhiai",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "0.2.0",
     "updates": {
       "url": "https://u.expo.dev/8ec897f1-c9bc-4ab0-899c-8b50aa04bb18"
-    }
+    },
+    "jsEngine": "jsc"
   }
 }
